@@ -1,0 +1,5 @@
+.env*
+*egg*/*
+venv/*
+__pycache__/*
+src/schema.json
