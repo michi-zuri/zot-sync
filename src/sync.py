@@ -1,6 +1,6 @@
 import click
 
-from src import fetch as _fetch, schema as _schema
+from . import fetch as _fetch, schema as _schema
 
 class Config(object):
     def __init__(self):
