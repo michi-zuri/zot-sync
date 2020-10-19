@@ -6,6 +6,7 @@ from sqlalchemy import text
 from pyzotero.zotero import Zotero
 
 from . import schema
+from . import check
 
 def _duration(start_time) :
     return (datetime.datetime.now(datetime.timezone.utc)-start_time).total_seconds()
@@ -19,15 +20,17 @@ def from_zotero_user(engine, user_id, api_key = None, verbose = False) :
 def from_zotero_group(engine, group_id, api_key = None, verbose = False):
     from_zotero_library(engine, group_id, 'group', api_key, verbose)
 
-def from_all_by_user(engine, user_id, api_key, only_groups = False, verbose = False):
+def from_all_groups_by_user(engine, user_id = None, api_key = None, only_groups = False, verbose = False):
     try:
-        _from_all_by_user(engine, user_id, api_key, only_groups, verbose)
+        _from_all_groups_by_user(engine, user_id, api_key, only_groups, verbose)
     except Exception as e:
         print("\nsome error has occurred ¶")
 
-def _from_all_by_user(engine, user_id, api_key, only_groups = False, verbose = False):
+def _from_all_groups_by_user(engine, user_id = None, api_key = None, only_groups = False, verbose = False):
     z = Zotero(user_id, 'user', api_key)
-    print('this feature is not implemented yet')
+    groups = z.groups()
+    for group in groups :
+        from_zotero_group(engine, group['id'], api_key, verbose)
 
 def from_all_by_key(engine, api_key, only_groups = False, verbose = False):
     try:
@@ -36,20 +39,19 @@ def from_all_by_key(engine, api_key, only_groups = False, verbose = False):
         print("\ninvalid API key starting with %s ¶" % api_key[:3])
 
 def _from_all_by_key(engine, api_key, only_groups = False, verbose = False):
-    z = Zotero('AnyLibrary', 'AnyType', api_key)
-    key_info = z.key_info(limit=None)
+    key_info = check.key_info(api_key, verbose)
     if 'user' in key_info['access'] and not only_groups :
         from_zotero_user(engine, key_info['userID'], api_key, verbose)
-    else :
-        return "not syncing user library for API key starting with %s" % api_key[:4]
-
+    if 'user' in key_info['access'] and only_groups :
+        print('skipping user library as requested')
     if 'groups' in key_info['access']:
-        for group in key_info['access']['groups'] :
-            if group == 'all' :
-                from_all_by_user(engine, key_info['userID'], api_key, only_groups, verbose)
-            from_zotero_group(engine, int(group), api_key, verbose)
+        if 'all' in key_info['access']['groups']:
+            from_all_groups_by_user(engine, key_info['userID'], api_key, only_groups, verbose)
+        else :
+            for group in key_info['access']['groups'] :
+                from_zotero_group(engine, int(group), api_key, verbose)
     else :
-        return "no groups to sync in this API key starting with %s" % api_key[:4]
+        return "no groups to sync for this API key starting with %s" % api_key[:4]
 
 def from_zotero_library(engine, library_id, library_type, api_key = None,  verbose = False):
     skip = False

@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='zot-sync',
-    version='0.1.1',
+    version='0.2.0',
     description='Command-line interface to sync Zotero libraries to a local PostgreSQL database',
     author='Michael Paul Killian',
     author_email='rad@killian.email',
