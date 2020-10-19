@@ -46,6 +46,7 @@ def _from_all_by_key(engine, api_key, only_groups = False, verbose = False):
     if 'groups' in key_info['access']:
         for group in key_info['access']['groups'] :
             if group == 'all' :
+                from_all_by_user(engine, key_info['userID'], api_key, only_groups, verbose)
             from_zotero_group(engine, int(group), api_key, verbose)
     else :
         return "no groups to sync in this API key starting with %s" % api_key[:4]
