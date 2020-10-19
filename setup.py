@@ -1,9 +1,13 @@
-from setuptools import setup, find_packages
+import setuptools
 
-setup(
+setuptools.setup(
     name='zot-sync',
-    version='0.1',
-    py_modules=find_packages(),
+    version='0.1.0',
+    description='Command-line interface to sync Zotero libraries to a local PostgreSQL database',
+    author='Michael Paul Killian',
+    author_email='rad@killian.email',
+    url='https://github.com/michi-zuri/zot-sync',
+    packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
         'Click',
@@ -16,4 +20,3 @@ setup(
         zot-sync=src.sync:cli
     ''',
 )
-
