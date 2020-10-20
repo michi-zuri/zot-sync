@@ -45,7 +45,7 @@ ALTER TABLE logs.zot_fetch ADD COLUMN IF NOT EXISTS "%s" %s;
     # pass on engine for further connections
     return engine
 
-def from_zotero(flush = False, verbose = False) :
+def from_zotero(flush_cache = False, verbose = False) :
     schema_file = os.path.normpath(os.path.join(os.path.dirname(__file__), './schema.json'))
     try :
         with open(schema_file, 'r') as file :
@@ -54,7 +54,7 @@ def from_zotero(flush = False, verbose = False) :
         schema = {}
     headers = schema.get('headers',{} )
     # flush cache
-    if flush :
+    if flush_cache :
         headers = { 'Accept-Encoding' : 'gzip' }
     updated_schema = None
     try:
@@ -91,31 +91,55 @@ def from_zotero(flush = False, verbose = False) :
     else :
         raise ValueError("Schema could not be loaded for the Zotero API.")
 
-def _system_fields() :
+def _key_field(foreign = False, lib_schema = None ) :
+    if foreign :
+        field = { 'key': 'char(8) PRIMARY KEY REFERENCES {lib}.items.key(char(8)) ON DELETE CASCADE'.format( lib = lib_schema ) }
+    else :
+        field = { 'key': 'char(8) PRIMARY KEY' }
+    return field
+
+def _special_fields() :
+    ''' Changes to these fields requires special attention when patched.
+    '''
     fields = {}
-    fields['key'] = 'varchar(8) PRIMARY KEY'
-    fields['version'] = 'integer'
-    fields['deleted'] = 'boolean DEFAULT FALSE'
     fields['itemType'] = 'varchar(20)'
+    fields['deleted'] = 'boolean DEFAULT FALSE'
+    fields['creators'] = 'jsonb'
+    fields['tags'] = 'jsonb'
+    fields['collections'] = 'jsonb'
+    fields['relations'] = 'jsonb'
+    return fields
+
+def _system_fields() :
+    ''' Changes to these fields are only made by the Zotero API server.
+    '''
+    fields = {}
+    fields['version'] = 'integer'
     fields['numChildren'] = 'integer'
     fields['dateAdded'] = 'timestamp with time zone'
     fields['dateModified'] = 'timestamp with time zone'
-    fields['createdByUser'] = 'varchar(1023)'
-    fields['lastModifiedByUser'] = 'varchar(1023)'
+    return fields
+
+def _meta_fields() :
+    ''' These meta fields are managed by the Zotero API server.
+    '''
+    fields = {}
+    fields['createdByUser'] = 'jsonb'
+    fields['lastModifiedByUser'] = 'jsonb'
     fields['parsedDate'] = 'varchar(127)'
     fields['creatorSummary'] = 'varchar(127)'
-    fields['creators'] = 'jsonb'
-    fields['tags'] = 'jsonb'
-    fields['collections'] = 'varchar(65535)'
-    fields['relations'] = 'varchar(65535)'
     return fields
 
 def for_library(engine, library_type_id, verbose = False):
     """ Prepare database table to accomodate all possible fields for storage.
         Creates a schema, tables, views and columns as needed
     """
-    fields = _system_fields()
     schema = from_zotero(verbose)
+
+    fields = _key_field()
+    fields.update(_system_fields())
+    fields.update(_meta_fields())
+    fields.update(_special_fields())
     fields.update(schema['fields'])
 
     with engine.connect() as db:
@@ -132,6 +156,12 @@ CREATE TABLE IF NOT EXISTS %s.items ();""" % library_type_id
         if verbose :
             print(query)
 
+        query = """
+CREATE TABLE IF NOT EXISTS %s.meta ();""" % library_type_id
+        db.execute(text(query))
+        if verbose :
+            print(query)
+
         for field,type in fields.items() :
             query = """
 ALTER TABLE %s.items ADD COLUMN IF NOT EXISTS "%s" %s;
@@ -141,7 +171,12 @@ ALTER TABLE %s.items ADD COLUMN IF NOT EXISTS "%s" %s;
                 print(query)
 
         for item_type in schema['itemTypes'] :
-            view_fields = [ '"%s"'% s for s in list(_system_fields().keys()) ]
+            view_fields = [
+            '"%s"'% s for s in list(_key_field().keys()) ] + [
+            '"%s"'% s for s in list(_system_fields().keys()) ] + [
+            '"%s"'% s for s in list(_meta_fields().keys()) ] + [
+            '"%s"'% s for s in list(_special_fields().keys()) ]
+
             for field in item_type['fields'] :
                 view_name = field['field']
                 base_name = field.get('baseField', None)
@@ -166,7 +201,7 @@ def _typeset_for_db(field, value, item_type) :
         return None
     elif field in ('deleted') :
         return str(value)
-    elif field in ('collections', 'relations', 'tags', 'creators', 'createdByUser', 'lastModifiedByUser') :
+    elif field in ('creators', 'tags', 'collections', 'relations', 'createdByUser', 'lastModifiedByUser') :
         return json.dumps(value)
     else :
         return value
