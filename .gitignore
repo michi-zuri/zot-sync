@@ -3,3 +3,4 @@
 venv/*
 *pycache*
 src/schema.json
+.DS_Store
