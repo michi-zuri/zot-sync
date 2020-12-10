@@ -1,6 +1,6 @@
 # https://www.python.org/dev/peps/pep-0263/ encoding: utf-8
 
-import datetime, json, math, os
+import datetime, json, math, os, re
 
 from sqlalchemy import text
 from pyzotero.zotero import Zotero
@@ -152,6 +152,11 @@ def _from_zotero_library(engine, library_id, library_type, api_key = None, verbo
                                 update_string += ', "%s"=:%s' % (field, field)
                                 insert_field_string += ', "%s"' % field
                                 insert_value_string += ', :%s' % field
+                            if field == 'note' :
+                                data['customJSON'] = schema._typeset_for_db("customJSON", json.loads(re.findall(r'{.*}',value)[0]), "note")
+                                update_string += ', "%s"=:%s' % ("customJSON", "customJSON")
+                                insert_field_string += ', "%s"' % "customJSON"
+                                insert_value_string += ', :%s' % "customJSON"
                         for field,value in item['meta'].items() :
                             data[field] = schema._typeset_for_db(field, value, item['data']['itemType'])
                             update_string += ', "%s"=:%s' % (field, field)

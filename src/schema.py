@@ -71,10 +71,19 @@ def from_zotero(flush_cache = False, verbose = False) :
         updated_schema['headers']['If-Modified-Since'] = response.headers['Last-Modified']
         unsorted_fields = {}
         for type in updated_schema['itemTypes'] :
+            if type['itemType']=='note' :
+                type['fields'] = [{ 'field' : 'note', 'baseField' : 'title' }
+                , { 'field' : 'customJSON' }
+                , { 'field' : 'parsedDate',     'baseField' : 'undefined' }
+                , { 'field' : 'creatorSummary', 'baseField' : 'undefined' }
+                , { 'field' : 'creators',       'baseField' : 'undefined' }
+                ]
             for field in type['fields'] :
                 key = field.get('baseField',field['field'])
                 if key=='accessDate' :
                     unsorted_fields[key] = 'timestamp'
+                elif key=='customJSON' :
+                    unsorted_fields[key] = 'jsonb'
                 else :
                     unsorted_fields[key] = 'varchar(65535)'
         sorted_fields = sorted(unsorted_fields.items())
@@ -82,7 +91,7 @@ def from_zotero(flush_cache = False, verbose = False) :
         with open(schema_file, 'w') as file:
             json.dump(updated_schema, file)
     if updated_schema :
-        print( "The Zotero schema was updated to version last modified %s" % schema['headers']['If-Modified-Since'] )
+        print( "The Zotero schema was updated to version last modified %s" % updated_schema['headers']['If-Modified-Since'] )
         return updated_schema
     elif schema :
         if verbose :
@@ -180,6 +189,9 @@ ALTER TABLE %s.items ADD COLUMN IF NOT EXISTS "%s" %s;
             for field in item_type['fields'] :
                 view_name = field['field']
                 base_name = field.get('baseField', None)
+                if base_name=='undefined' :
+                    view_fields.remove('"%s"' % view_name)
+                    continue
                 if base_name :
                     alias_name = '"%s" AS "%s"' % (base_name, view_name)
                 else :
@@ -201,10 +213,13 @@ def _typeset_for_db(field, value, item_type) :
         return None
     elif field in ('deleted') :
         return str(value)
-    elif field in ('creators', 'tags', 'collections', 'relations', 'createdByUser', 'lastModifiedByUser') :
+    elif field in ('customJSON', 'creators', 'tags', 'collections', 'relations', 'createdByUser', 'lastModifiedByUser') :
         return json.dumps(value)
     else :
         return value
+
+def _parse_JSON_from_note(value) :
+    return json.dumps({'casetext' : json.dumps(value) })
 
 '''
 Todo: make table for local enrichments to data.
