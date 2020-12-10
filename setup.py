@@ -12,7 +12,7 @@ setuptools.setup(
     install_requires=[
         'Click',
         'SQLAlchemy',
-        'psycopg2',
+        'psycopg2-binary',
         'pyzotero',
     ],
     entry_points='''
