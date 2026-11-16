@@ -1,0 +1,82 @@
+name: Release
+
+# Push a tag such as v0.4.0, matching the version in package.json, to test,
+# build and publish dist/zot-sync.mjs as a release asset with its hashes.
+# Running the workflow by hand does everything except publishing.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # create the release
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zot_sync_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.elm
+          key: elm-${{ hashFiles('script/elm.json') }}
+
+      - name: Version
+        id: version
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in package.json"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:integration
+        env:
+          ZOT_SYNC_TEST_DB: postgres://postgres:postgres@localhost:5432/zot_sync_test
+
+      - name: Build
+        run: npm run build -- --set-version "${{ steps.version.outputs.version }}"
+
+      - name: Publish
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum zot-sync.mjs > zot-sync.mjs.sha256
+          sri="sha256-$(openssl dgst -sha256 -binary zot-sync.mjs | base64 -w0)"
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/zot-sync.mjs"
+          {
+            echo "\`zot-sync.mjs\` is a single file that needs only Node 20 or newer."
+            echo
+            echo '```nix'
+            echo 'pkgs.fetchurl {'
+            echo "  url = \"$url\";"
+            echo "  hash = \"$sri\";"
+            echo '}'
+            echo '```'
+          } > notes.md
+          # Fails if the release exists, so a published asset (and its hash) never changes.
+          gh release create "$GITHUB_REF_NAME" zot-sync.mjs zot-sync.mjs.sha256 \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "zot-sync $GITHUB_REF_NAME" --notes-file notes.md

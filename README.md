@@ -110,6 +110,27 @@ written, so an interrupted run is simply repeated next time. `Backoff` and `Retr
 from the API are honoured. If one library fails, it is recorded in `zotero.sync_run` and
 the others are still synced.
 
+## Releases
+
+Pushing a tag `vX.Y.Z` that matches `version` in `package.json` runs
+`.github/workflows/release.yml`: the unit and end-to-end tests (against a Postgres service
+container), then a build stamped with that version (`zot-sync.mjs --version`), published as a
+GitHub release with `zot-sync.mjs`, its SHA-256, and a ready-to-paste `pkgs.fetchurl` with
+the Nix hash. A published asset is never replaced, so a pinned hash stays valid. Running the
+workflow by hand does everything except publish.
+
+```bash
+git tag v0.4.0
+```
+
+```bash
+git push origin v0.4.0
+```
+
+`zot-sync.mjs` needs only Node, writes nothing to disk, and needs no database privilege
+beyond `CREATE` on its database, so it runs fine as a locked-down service user (for example
+systemd's `DynamicUser`), with the key and database URL in an environment file.
+
 ## Development
 
 ```bash
