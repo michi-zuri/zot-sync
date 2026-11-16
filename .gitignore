@@ -4,3 +4,7 @@ venv/*
 *pycache*
 src/schema.json
 .DS_Store
+# elm-pages script toolchain
+node_modules/
+elm-stuff/
+.elm-pages/

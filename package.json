@@ -1,0 +1,20 @@
+{
+  "name": "zot-sync",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Sync Zotero libraries into a PostgreSQL mirror",
+  "type": "module",
+  "scripts": {
+    "sync": "elm-pages run ZotSync",
+    "test": "cd script && elm-test"
+  },
+  "devDependencies": {
+    "elm": "0.19.1-6",
+    "elm-pages": "3.6.0",
+    "elm-test": "0.19.1-revision17",
+    "lamdera": "0.19.3-1.5.0"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
