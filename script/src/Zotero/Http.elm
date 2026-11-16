@@ -149,6 +149,8 @@ send url requestHeaders =
         , timeoutInMs = Just 120000
         }
         (BackendTask.Http.expectJson Decode.value |> BackendTask.Http.withMetadata (toResponse url))
+        -- elm-pages would print a timing line per request; --verbose logs our own
+        |> BackendTask.quiet
         |> BackendTask.onError
             (\{ recoverable } ->
                 case recoverable of

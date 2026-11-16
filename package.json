@@ -2,10 +2,17 @@
   "name": "zot-sync",
   "version": "0.4.0",
   "private": true,
-  "description": "Sync Zotero libraries into a PostgreSQL mirror",
+  "description": "Mirror Zotero libraries into PostgreSQL",
   "type": "module",
+  "bin": {
+    "zot-sync": "dist/zot-sync.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "sync": "elm-pages run ZotSync",
+    "build": "elm-pages bundle-script ZotSync --output dist/zot-sync.mjs",
     "test": "npm run test:unit",
     "test:unit": "node script/tests/generate-fixtures.mjs && cd script && elm-test",
     "test:integration": "node --test --test-concurrency=1 \"tests/integration/*.test.mjs\"",
