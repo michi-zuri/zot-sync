@@ -7,7 +7,9 @@
   "scripts": {
     "sync": "elm-pages run ZotSync",
     "test": "npm run test:unit",
-    "test:unit": "node script/tests/generate-fixtures.mjs && cd script && elm-test"
+    "test:unit": "node script/tests/generate-fixtures.mjs && cd script && elm-test",
+    "test:integration": "node --test --test-concurrency=1 \"tests/integration/*.test.mjs\"",
+    "test:all": "npm run test:unit && npm run test:integration"
   },
   "devDependencies": {
     "elm": "0.19.1-6",

@@ -102,22 +102,24 @@ ensureLibrary library =
 {-| -}
 libraryState : Library -> Statement
 libraryState library =
-    Sql.statement "SELECT version, views_revision FROM zotero.library WHERE id = $1" [ libraryParam library ]
+    Sql.statement "SELECT version, views_revision, name FROM zotero.library WHERE id = $1" [ libraryParam library ]
 
 
 {-| -}
 type alias LibraryState =
     { version : Int
     , viewsRevision : Maybe String
+    , name : Maybe String
     }
 
 
 {-| -}
 libraryStateDecoder : Decoder LibraryState
 libraryStateDecoder =
-    Decode.map2 LibraryState
+    Decode.map3 LibraryState
         (Decode.field "version" Decode.int)
         (Decode.field "views_revision" (Decode.nullable Decode.string))
+        (Decode.oneOf [ Decode.field "name" (Decode.nullable Decode.string), Decode.succeed Nothing ])
 
 
 {-| -}

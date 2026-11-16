@@ -67,7 +67,7 @@ upToDateLibrary runId test_ =
     test_
         |> BackendTaskTest.ensureCustom "pgQuery" (sqlStartsWith "INSERT INTO zotero.library")
         |> BackendTaskTest.simulateCustom "pgQuery" (affected 0)
-        |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "version", Encode.int 126 ), ( "views_revision", Encode.string "views-1:\"s42\"" ) ] ])
+        |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "version", Encode.int 126 ), ( "views_revision", Encode.string "views-1:\"s42\"" ), ( "name", Encode.string "Mine" ) ] ])
         |> BackendTaskTest.ensureCustom "pgQuery" (sqlStartsWith "INSERT INTO zotero.sync_run")
         |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "id", Encode.int runId ) ] ])
 
@@ -88,7 +88,7 @@ suite =
                             >> Expect.equal (Ok [ "UPDATE zotero.library", "UPDATE zotero.sync_run" ])
                         )
                     |> BackendTaskTest.simulateCustom "pgTransaction" committed
-                    |> BackendTaskTest.ensureStdout [ "zot_u_1234567: up to date at version 126" ]
+                    |> BackendTaskTest.ensureStdout [ "zot_u_1234567 \"Mine\": up to date at version 126" ]
                     |> BackendTaskTest.expectSuccess
         , test "a library that fails is recorded and reported, and the next one still syncs" <|
             \() ->
@@ -105,7 +105,7 @@ suite =
                     |> upToDateLibrary 1
                     |> respond "https://api.zotero.org/users/1234567/settings?since=126" 304 [] Encode.null
                     |> BackendTaskTest.simulateCustom "pgTransaction" committed
-                    |> BackendTaskTest.ensureStdout [ "zot_u_1234567 \"zot-sync-tester\": up to date at version 126" ]
+                    |> BackendTaskTest.ensureStdout [ "zot_u_1234567 \"Mine\": up to date at version 126" ]
                     -- the group: never synced, and its metadata is forbidden
                     |> BackendTaskTest.simulateCustom "pgQuery" (affected 1)
                     |> BackendTaskTest.simulateCustom "pgQuery" (rows [])

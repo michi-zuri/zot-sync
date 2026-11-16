@@ -339,7 +339,7 @@ syncLibrary ctx target =
     in
     dbExec ctx (Store.ensureLibrary library)
         |> BackendTask.andThen (\_ -> dbQuery ctx (Store.libraryState library) Store.libraryStateDecoder)
-        |> BackendTask.map (List.head >> Maybe.withDefault { version = 0, viewsRevision = Nothing })
+        |> BackendTask.map (List.head >> Maybe.withDefault { version = 0, viewsRevision = Nothing, name = Nothing })
         |> BackendTask.andThen
             (\state ->
                 dbQuery ctx (Store.startRun library state.version) Store.runIdDecoder
@@ -380,6 +380,8 @@ syncTracked ctx target state runId =
                                         Just p ->
                                             ( True, p )
 
+                                -- Fresh information first, then what was stored, so the
+                                -- name is stable from run to run.
                                 name : Maybe String
                                 name =
                                     case group of
@@ -387,7 +389,9 @@ syncTracked ctx target state runId =
                                             Just g.name
 
                                         Nothing ->
-                                            firstJust target.name progress.libraryName
+                                            progress.libraryName
+                                                |> orElse state.name
+                                                |> orElse target.name
 
                                 viewsNeeded : Bool
                                 viewsNeeded =
@@ -895,6 +899,13 @@ chunks size list =
 
         _ ->
             List.take size list :: chunks size (List.drop size list)
+
+
+{-| `first |> orElse fallback`
+-}
+orElse : Maybe a -> Maybe a -> Maybe a
+orElse other first =
+    firstJust first other
 
 
 firstJust : Maybe a -> Maybe a -> Maybe a
