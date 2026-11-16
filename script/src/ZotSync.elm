@@ -6,11 +6,15 @@ module ZotSync exposing
 
 {-| zot-sync: mirror Zotero libraries into Postgres.
 
-    zot-sync fetch --db postgres://... --key KEY             every library the key can read
-    zot-sync fetch --db postgres://... --user ID [--key KEY] one user library
-    zot-sync fetch --db postgres://... --group ID            one group library
-    zot-sync fetch --db postgres://... --user ID --all       a user's library and groups
-    zot-sync check --db postgres://... --key KEY             check the database and the key
+    zot - sync fetch --db postgres://... --key KEY             every library the key can read
+
+    zot - sync fetch --db postgres://... --user ID [--key KEY] one user library
+
+    zot - sync fetch --db postgres://... --group ID            one group library
+
+    zot - sync fetch --db postgres://... --user ID --all       a user's library and groups
+
+    zot - sync check --db postgres://... --key KEY             check the database and the key
 
 The options and their precedence are zot-sync 0.3's, as long flags.
 
@@ -334,7 +338,15 @@ outcomeLine target result =
                         "version " ++ String.fromInt outcome.fromVersion ++ " -> " ++ String.fromInt outcome.toVersion ++ " · " ++ summary outcome.stats
 
                     else
-                        "up to date at version " ++ String.fromInt outcome.toVersion
+                        "up to date at version "
+                            ++ String.fromInt outcome.toVersion
+                            ++ (case summaryParts outcome.stats of
+                                    [] ->
+                                        ""
+
+                                    parts ->
+                                        " · " ++ String.join ", " parts
+                               )
                    )
                 ++ (if outcome.viewsUpdated then
                         " · views updated"
@@ -349,6 +361,16 @@ outcomeLine target result =
 
 summary : Sync.Stats -> String
 summary stats =
+    case summaryParts stats of
+        [] ->
+            "nothing new"
+
+        parts ->
+            String.join ", " parts
+
+
+summaryParts : Sync.Stats -> List String
+summaryParts stats =
     [ ( stats.items, "item", "items" )
     , ( stats.collections, "collection", "collections" )
     , ( stats.searches, "saved search", "saved searches" )
@@ -368,13 +390,6 @@ summary stats =
                             many
                        )
             )
-        |> (\parts ->
-                if List.isEmpty parts then
-                    "nothing new"
-
-                else
-                    String.join ", " parts
-           )
 
 
 check : CheckOptions -> BackendTask FatalError ()

@@ -344,6 +344,29 @@ test("large libraries are fetched 100 at a time (the API would page at 25 withou
   });
 });
 
+test("skipping full text once does not lose it: the next run catches up", async () => {
+  const lib = userLibrary();
+  await withZotero([lib], async (zotero) => {
+    const first = await zotSync(fetchArgs(zotero, "--user", String(USER), "--key", KEY, "--skip-fulltext"));
+    assert.equal(first.code, 0, first.out);
+    assert.equal((await one(`SELECT count(*)::int AS n FROM zotero.fulltext`)).n, 0);
+
+    zotero.requests.length = 0;
+    const second = await zotSync(fetchArgs(zotero, "--user", String(USER), "--key", KEY));
+    assert.equal(second.code, 0, second.out);
+    assert.match(second.out, new RegExp(`up to date at version ${lib.version} · 1 full text`));
+    assert.deepEqual(
+      zotero.requests.map((r) => r.path),
+      ["/schema", `/users/${USER}/settings`, `/users/${USER}/fulltext`, `/users/${USER}/items/HI9J2K3L/fulltext`]
+    );
+    assert.equal((await one(`SELECT count(*)::int AS n FROM zotero.fulltext`)).n, 1);
+
+    zotero.requests.length = 0;
+    assert.equal((await zotSync(fetchArgs(zotero, "--user", String(USER), "--key", KEY))).code, 0);
+    assert.deepEqual(zotero.requests.map((r) => r.path), ["/schema", `/users/${USER}/settings`]);
+  });
+});
+
 test("a zot-sync 0.3 database is refused untouched", async () => {
   await db.query("CREATE SCHEMA logs; CREATE TABLE logs.zot_fetch (id serial)");
   await withZotero([userLibrary()], async (zotero) => {

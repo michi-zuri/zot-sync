@@ -51,7 +51,7 @@ qualified schema name =
     identifier schema ++ "." ++ identifier name
 
 
-{-| A string literal: `it's` becomes `'it''s'` (standard_conforming_strings).
+{-| A string literal: `it's` becomes `'it''s'` (standard\_conforming\_strings).
 -}
 literal : String -> String
 literal value =

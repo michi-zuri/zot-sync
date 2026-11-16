@@ -339,7 +339,7 @@ syncLibrary ctx target =
     in
     dbExec ctx (Store.ensureLibrary library)
         |> BackendTask.andThen (\_ -> dbQuery ctx (Store.libraryState library) Store.libraryStateDecoder)
-        |> BackendTask.map (List.head >> Maybe.withDefault { version = 0, viewsRevision = Nothing, name = Nothing })
+        |> BackendTask.map (List.head >> Maybe.withDefault { version = 0, viewsRevision = Nothing, name = Nothing, fulltextVersion = 0 })
         |> BackendTask.andThen
             (\state ->
                 dbQuery ctx (Store.startRun library state.version) Store.runIdDecoder
@@ -372,69 +372,107 @@ syncTracked ctx target state runId =
                     |> BackendTask.andThen
                         (\result ->
                             let
-                                ( changed, progress ) =
+                                ( changed, passed ) =
                                     case result of
                                         Nothing ->
-                                            ( False, { version = state.version, stats = noStats, libraryName = Nothing } )
+                                            ( False, { version = state.version, stats = noStats, libraryName = Nothing, full = False } )
 
                                         Just p ->
                                             ( True, p )
-
-                                -- Fresh information first, then what was stored, so the
-                                -- name is stable from run to run.
-                                name : Maybe String
-                                name =
-                                    case group of
-                                        Just g ->
-                                            Just g.name
-
-                                        Nothing ->
-                                            progress.libraryName
-                                                |> orElse state.name
-                                                |> orElse target.name
-
-                                viewsNeeded : Bool
-                                viewsNeeded =
-                                    changed || state.viewsRevision /= Just ctx.schemaRevision
                             in
-                            (if viewsNeeded then
-                                planViews ctx library
-
-                             else
-                                BackendTask.succeed []
-                            )
-                                |> BackendTask.andThen
-                                    (\viewStatements ->
-                                        dbTx ctx
-                                            (viewStatements
-                                                ++ [ Store.finishLibrary library
-                                                        { version = progress.version
-                                                        , name = name
-                                                        , groupData = Maybe.map .data group
-                                                        , viewsRevision =
-                                                            if viewsNeeded then
-                                                                Just ctx.schemaRevision
-
-                                                            else
-                                                                Nothing
-                                                        }
-                                                   , Store.finishRun runId progress.version (encodeStats progress.stats)
-                                                   ]
-                                            )
-                                    )
-                                |> BackendTask.map
-                                    (\_ ->
-                                        { library = library
-                                        , name = name
-                                        , fromVersion = state.version
-                                        , toVersion = progress.version
-                                        , changed = changed
-                                        , viewsUpdated = viewsNeeded
-                                        , stats = progress.stats
-                                        }
-                                    )
+                            catchUpFulltext ctx library state passed
+                                |> BackendTask.andThen (finish ctx target state runId group changed)
                         )
             )
+
+
+finish : Context -> Target -> Store.LibraryState -> Int -> Maybe Object.Group -> Bool -> Progress -> BackendTask Error Outcome
+finish ctx target state runId group changed progress =
+    let
+        library : Library
+        library =
+            target.library
+
+        -- Fresh information first, then what was stored, so the
+        -- name is stable from run to run.
+        name : Maybe String
+        name =
+            case group of
+                Just g ->
+                    Just g.name
+
+                Nothing ->
+                    progress.libraryName
+                        |> orElse state.name
+                        |> orElse target.name
+
+        viewsNeeded : Bool
+        viewsNeeded =
+            changed || state.viewsRevision /= Just ctx.schemaRevision
+    in
+    (if viewsNeeded then
+        planViews ctx library
+
+     else
+        BackendTask.succeed []
+    )
+        |> BackendTask.andThen
+            (\viewStatements ->
+                dbTx ctx
+                    (viewStatements
+                        ++ [ Store.finishLibrary library
+                                { version = progress.version
+                                , fulltextVersion =
+                                    if ctx.fulltext then
+                                        Just progress.version
+
+                                    else
+                                        Nothing
+                                , name = name
+                                , groupData = Maybe.map .data group
+                                , viewsRevision =
+                                    if viewsNeeded then
+                                        Just ctx.schemaRevision
+
+                                    else
+                                        Nothing
+                                }
+                           , Store.finishRun runId progress.version (encodeStats progress.stats)
+                           ]
+                    )
+            )
+        |> BackendTask.map
+            (\_ ->
+                { library = library
+                , name = name
+                , fromVersion = state.version
+                , toVersion = progress.version
+                , changed = changed
+                , viewsUpdated = viewsNeeded
+                , stats = progress.stats
+                }
+            )
+
+
+{-| Full text has its own version, so a run with --skip-fulltext never makes a
+later run miss older full text: each run catches up from where full text was
+last synced, even when the rest of the library is unchanged.
+-}
+catchUpFulltext : Context -> Library -> Store.LibraryState -> Progress -> BackendTask Error Progress
+catchUpFulltext ctx library state progress =
+    if ctx.fulltext && (state.fulltextVersion < progress.version || progress.full) then
+        syncFulltext ctx
+            library
+            (if progress.full || state.fulltextVersion == 0 then
+                Full
+
+             else
+                Since state.fulltextVersion
+            )
+            progress
+
+    else
+        BackendTask.succeed progress
 
 
 groupMetadata : Context -> Library -> BackendTask Error (Maybe Object.Group)
@@ -499,6 +537,7 @@ type alias Progress =
     { version : Int
     , stats : Stats
     , libraryName : Maybe String
+    , full : Bool
     }
 
 
@@ -543,13 +582,12 @@ passOnce ctx library mode =
                         BackendTask.succeed Nothing
 
                     Just ( version, settings ) ->
-                        { version = version, stats = noStats, libraryName = Nothing }
+                        { version = version, stats = noStats, libraryName = Nothing, full = mode == Full }
                             |> writeSettings ctx library mode settings
                             |> BackendTask.andThen (syncKind ctx library mode Collections)
                             |> BackendTask.andThen (syncKind ctx library mode Searches)
                             |> BackendTask.andThen (syncKind ctx library mode Items)
                             |> BackendTask.andThen (syncDeletions ctx library mode)
-                            |> BackendTask.andThen (syncFulltext ctx library mode)
                             |> BackendTask.map Just
             )
 

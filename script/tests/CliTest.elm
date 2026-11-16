@@ -9,9 +9,9 @@ import Json.Encode as Encode
 import Sync
 import Test exposing (Test, describe, test)
 import Test.BackendTask as BackendTaskTest
+import ZotSync exposing (Selection(..))
 import Zotero.Api as Api
 import Zotero.Library exposing (Library(..))
-import ZotSync exposing (Selection(..))
 
 
 options : ZotSync.FetchOptions

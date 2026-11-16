@@ -79,16 +79,44 @@ suite =
                     specColumns "case" (input v42 Dict.empty Dict.empty)
                         |> List.take 18
                         |> Expect.equal
-                            [ "key", "version", "numChildren", "dateAdded", "dateModified", "createdByUser", "lastModifiedByUser"
-                            , "parsedDate", "creatorSummary", "itemType", "deleted", "creators", "tags", "collections", "relations"
-                            , "caseName", "abstractNote", "court"
+                            [ "key"
+                            , "version"
+                            , "numChildren"
+                            , "dateAdded"
+                            , "dateModified"
+                            , "createdByUser"
+                            , "lastModifiedByUser"
+                            , "parsedDate"
+                            , "creatorSummary"
+                            , "itemType"
+                            , "deleted"
+                            , "creators"
+                            , "tags"
+                            , "collections"
+                            , "relations"
+                            , "caseName"
+                            , "abstractNote"
+                            , "court"
                             ]
             , test "the note view drops creator columns and adds note, customJSON, parentItem" <|
                 \() ->
                     specColumns "note" (input v42 Dict.empty Dict.empty)
                         |> Expect.equal
-                            [ "key", "version", "numChildren", "dateAdded", "dateModified", "createdByUser", "lastModifiedByUser"
-                            , "itemType", "deleted", "tags", "collections", "relations", "note", "customJSON", "parentItem"
+                            [ "key"
+                            , "version"
+                            , "numChildren"
+                            , "dateAdded"
+                            , "dateModified"
+                            , "createdByUser"
+                            , "lastModifiedByUser"
+                            , "itemType"
+                            , "deleted"
+                            , "tags"
+                            , "collections"
+                            , "relations"
+                            , "note"
+                            , "customJSON"
+                            , "parentItem"
                             ]
             , test "annotations get their non-schema fields and a typed position" <|
                 \() ->
@@ -97,9 +125,15 @@ suite =
                         |> List.concatMap .columns
                         |> List.filter (\( n, _ ) -> String.startsWith "annotation" n || n == "parentItem")
                         |> Expect.equal
-                            [ ( "annotationType", Text ), ( "annotationAuthorName", Text ), ( "annotationText", Text )
-                            , ( "annotationComment", Text ), ( "annotationColor", Text ), ( "annotationPageLabel", Text )
-                            , ( "annotationSortIndex", Text ), ( "annotationPosition", Jsonb ), ( "parentItem", Text )
+                            [ ( "annotationType", Text )
+                            , ( "annotationAuthorName", Text )
+                            , ( "annotationText", Text )
+                            , ( "annotationComment", Text )
+                            , ( "annotationColor", Text )
+                            , ( "annotationPageLabel", Text )
+                            , ( "annotationSortIndex", Text )
+                            , ( "annotationPosition", Jsonb )
+                            , ( "parentItem", Text )
                             ]
             , test "fields seen in the data but unknown to zot-sync are appended, sorted" <|
                 \() ->

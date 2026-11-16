@@ -102,7 +102,7 @@ ensureLibrary library =
 {-| -}
 libraryState : Library -> Statement
 libraryState library =
-    Sql.statement "SELECT version, views_revision, name FROM zotero.library WHERE id = $1" [ libraryParam library ]
+    Sql.statement "SELECT version, views_revision, name, fulltext_version FROM zotero.library WHERE id = $1" [ libraryParam library ]
 
 
 {-| -}
@@ -110,16 +110,18 @@ type alias LibraryState =
     { version : Int
     , viewsRevision : Maybe String
     , name : Maybe String
+    , fulltextVersion : Int
     }
 
 
 {-| -}
 libraryStateDecoder : Decoder LibraryState
 libraryStateDecoder =
-    Decode.map3 LibraryState
+    Decode.map4 LibraryState
         (Decode.field "version" Decode.int)
         (Decode.field "views_revision" (Decode.nullable Decode.string))
         (Decode.oneOf [ Decode.field "name" (Decode.nullable Decode.string), Decode.succeed Nothing ])
+        (Decode.oneOf [ Decode.field "fulltext_version" Decode.int, Decode.succeed 0 ])
 
 
 {-| -}
@@ -152,13 +154,17 @@ failRun runId message =
 {-| Record the synced version. Only moves forward, so an older concurrent run
 can never roll the library back.
 -}
-finishLibrary : Library -> { version : Int, name : Maybe String, groupData : Maybe Encode.Value, viewsRevision : Maybe String } -> Statement
+finishLibrary :
+    Library
+    -> { version : Int, fulltextVersion : Maybe Int, name : Maybe String, groupData : Maybe Encode.Value, viewsRevision : Maybe String }
+    -> Statement
 finishLibrary library state =
     Sql.statement """UPDATE zotero.library
 SET version = GREATEST(version, $2),
     name = COALESCE($3, name),
     group_data = COALESCE($4::jsonb, group_data),
     views_revision = COALESCE($5, views_revision),
+    fulltext_version = GREATEST(fulltext_version, COALESCE($6, fulltext_version)),
     synced_at = now()
 WHERE id = $1"""
         [ libraryParam library
@@ -166,6 +172,7 @@ WHERE id = $1"""
         , state.name |> Maybe.map Encode.string |> Maybe.withDefault Encode.null
         , state.groupData |> Maybe.map jsonParam |> Maybe.withDefault Encode.null
         , state.viewsRevision |> Maybe.map Encode.string |> Maybe.withDefault Encode.null
+        , state.fulltextVersion |> Maybe.map Encode.int |> Maybe.withDefault Encode.null
         ]
 
 

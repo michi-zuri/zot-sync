@@ -45,10 +45,12 @@ setup =
     zotero_id bigint NOT NULL,
     name text,
     version integer NOT NULL DEFAULT 0,
+    fulltext_version integer NOT NULL DEFAULT 0,
     group_data jsonb,
     views_revision text,
     synced_at timestamptz
 )"""
+    , "ALTER TABLE zotero.library ADD COLUMN IF NOT EXISTS fulltext_version integer NOT NULL DEFAULT 0"
     , """CREATE TABLE IF NOT EXISTS zotero.item (
     library text NOT NULL REFERENCES zotero.library (id) ON DELETE CASCADE,
     key text NOT NULL,
@@ -149,7 +151,7 @@ objectTable name =
 
 
 {-| A cast that returns NULL instead of raising, so one odd value (an
-`accessDate` of "CURRENT_TIMESTAMP", a note with broken JSON) can never make a
+`accessDate` of "CURRENT\_TIMESTAMP", a note with broken JSON) can never make a
 query over a view fail.
 -}
 safeCast : String -> String -> String -> String

@@ -74,8 +74,13 @@ suite =
                         |> Maybe.map (Object.observedFields >> List.filter (String.startsWith "annotation"))
                         |> Expect.equal
                             (Just
-                                [ "annotationColor", "annotationComment", "annotationPageLabel", "annotationPosition"
-                                , "annotationSortIndex", "annotationText", "annotationType"
+                                [ "annotationColor"
+                                , "annotationComment"
+                                , "annotationPageLabel"
+                                , "annotationPosition"
+                                , "annotationSortIndex"
+                                , "annotationText"
+                                , "annotationType"
                                 ]
                             )
             , test "library name comes from the envelope" <|

@@ -67,7 +67,7 @@ upToDateLibrary runId test_ =
     test_
         |> BackendTaskTest.ensureCustom "pgQuery" (sqlStartsWith "INSERT INTO zotero.library")
         |> BackendTaskTest.simulateCustom "pgQuery" (affected 0)
-        |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "version", Encode.int 126 ), ( "views_revision", Encode.string "views-1:\"s42\"" ), ( "name", Encode.string "Mine" ) ] ])
+        |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "version", Encode.int 126 ), ( "views_revision", Encode.string "views-1:\"s42\"" ), ( "name", Encode.string "Mine" ), ( "fulltext_version", Encode.int 126 ) ] ])
         |> BackendTaskTest.ensureCustom "pgQuery" (sqlStartsWith "INSERT INTO zotero.sync_run")
         |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "id", Encode.int runId ) ] ])
 
