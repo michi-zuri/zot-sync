@@ -63,12 +63,13 @@ execute db statement =
         (Decode.field "rowCount" Decode.int)
 
 
-{-| Statements in one transaction: all of them commit, or none.
+{-| Statements in one transaction: all of them commit, or none. Returns the
+affected row count of each statement.
 -}
-transaction : String -> List Statement -> BackendTask Error ()
+transaction : String -> List Statement -> BackendTask Error (List Int)
 transaction db statements =
     if List.isEmpty statements then
-        BackendTask.succeed ()
+        BackendTask.succeed []
 
     else
         call "pgTransaction"
@@ -77,7 +78,7 @@ transaction db statements =
                 , ( "statements", Encode.list Sql.encodeStatement statements )
                 ]
             )
-            (Decode.succeed ())
+            (Decode.field "results" (Decode.list (Decode.field "rowCount" Decode.int)))
 
 
 call : String -> Encode.Value -> Decoder a -> BackendTask Error a
