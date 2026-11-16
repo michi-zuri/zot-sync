@@ -1,30 +1,33 @@
 module ZotSync exposing
     ( run, program
     , Command(..), FetchOptions, CheckOptions
+    , Environment, withEnvironment
     , Selection(..), selection, targetsFor, outcomeLine
     )
 
 {-| zot-sync: mirror Zotero libraries into Postgres.
 
-    zot - sync fetch --db postgres://... --key KEY             every library the key can read
+```sh
+zot-sync fetch --db postgres://... --key KEY              # every library the key can read
+zot-sync fetch --db postgres://... --user ID [--key KEY]  # one user library
+zot-sync fetch --db postgres://... --group ID             # one group library
+zot-sync fetch --db postgres://... --user ID --all        # a user's library and groups
+zot-sync check --db postgres://... --key KEY              # check the database and the key
+```
 
-    zot - sync fetch --db postgres://... --user ID [--key KEY] one user library
-
-    zot - sync fetch --db postgres://... --group ID            one group library
-
-    zot - sync fetch --db postgres://... --user ID --all       a user's library and groups
-
-    zot - sync check --db postgres://... --key KEY             check the database and the key
-
-The options and their precedence are zot-sync 0.3's, as long flags.
+The options and their precedence are zot-sync 0.3's, as long flags. The
+database and the key can also come from `ZOT_SYNC_DB` and `ZOTERO_API_KEY`,
+which keeps them out of the process list.
 
 @docs run, program
 @docs Command, FetchOptions, CheckOptions
+@docs Environment, withEnvironment
 @docs Selection, selection, targetsFor, outcomeLine
 
 -}
 
 import BackendTask exposing (BackendTask)
+import BackendTask.Env
 import Cli.Option as Option
 import Cli.OptionsParser as OptionsParser
 import Cli.Program as Program
@@ -46,7 +49,7 @@ type Command
 
 {-| -}
 type alias FetchOptions =
-    { db : String
+    { db : Maybe String
     , user : Maybe Int
     , group : Maybe Int
     , key : Maybe String
@@ -87,10 +90,10 @@ program =
     Program.config
         |> Program.add
             (OptionsParser.buildSubCommand "fetch" FetchOptions
-                |> OptionsParser.with (Option.requiredKeywordArg "db" |> Option.withDescription "Postgres connection string, e.g. postgres://user:pass@host:5432/zotero")
+                |> OptionsParser.with (Option.optionalKeywordArg "db" |> Option.withDescription "Postgres connection string, e.g. postgres://user:pass@host:5432/zotero (or set ZOT_SYNC_DB)")
                 |> OptionsParser.with (Option.optionalKeywordArg "user" |> Option.validateMapIfPresent libraryId |> Option.withDescription "sync this user library")
                 |> OptionsParser.with (Option.optionalKeywordArg "group" |> Option.validateMapIfPresent libraryId |> Option.withDescription "sync this group library")
-                |> OptionsParser.with (Option.optionalKeywordArg "key" |> Option.withDescription "Zotero API key (https://www.zotero.org/settings/keys)")
+                |> OptionsParser.with (Option.optionalKeywordArg "key" |> Option.withDescription "Zotero API key (or set ZOTERO_API_KEY, which keeps it out of the process list)")
                 |> OptionsParser.with (Option.flag "all" |> Option.withDescription "also sync every group of the user (with --user or --key)")
                 |> OptionsParser.with (Option.flag "skip" |> Option.withDescription "skip the user library (with --all or --key)")
                 |> OptionsParser.with (Option.flag "skip-fulltext" |> Option.withDescription "do not sync the full-text content of attachments")
@@ -101,13 +104,62 @@ program =
             )
         |> Program.add
             (OptionsParser.buildSubCommand "check" CheckOptions
-                |> OptionsParser.with (Option.optionalKeywordArg "db" |> Option.withDescription "check this database and create the zot-sync tables")
-                |> OptionsParser.with (Option.optionalKeywordArg "key" |> Option.withDescription "show what this Zotero API key can read")
+                |> OptionsParser.with (Option.optionalKeywordArg "db" |> Option.withDescription "check this database and create the zot-sync tables (or set ZOT_SYNC_DB)")
+                |> OptionsParser.with (Option.optionalKeywordArg "key" |> Option.withDescription "show what this Zotero API key can read (or set ZOTERO_API_KEY)")
                 |> OptionsParser.with (Option.flag "verbose" |> Option.withDescription "log every request")
                 |> OptionsParser.with (Option.optionalKeywordArg "api-url" |> Option.withDefault Api.defaultBaseUrl |> Option.withDescription "Zotero API base URL")
                 |> OptionsParser.map Check
                 |> OptionsParser.withDescription "Check a database connection and what an API key can read."
             )
+
+
+{-| Settings that can come from the environment instead of the command line.
+-}
+type alias Environment =
+    { db : Maybe String
+    , apiKey : Maybe String
+    }
+
+
+environment : BackendTask error Environment
+environment =
+    BackendTask.map2 Environment
+        (BackendTask.Env.get "ZOT_SYNC_DB")
+        (BackendTask.Env.get "ZOTERO_API_KEY")
+
+
+{-| `ZOT_SYNC_DB` and `ZOTERO_API_KEY` fill in `--db` and `--key`. A flag wins
+over its variable, and an empty value counts as unset, so a blank line in a
+secrets file cannot become a key.
+-}
+withEnvironment : Environment -> { options | db : Maybe String, key : Maybe String } -> { options | db : Maybe String, key : Maybe String }
+withEnvironment env options =
+    { options
+        | db = firstNonEmpty options.db env.db
+        , key = firstNonEmpty options.key env.apiKey
+    }
+
+
+firstNonEmpty : Maybe String -> Maybe String -> Maybe String
+firstNonEmpty first second =
+    let
+        nonEmpty : Maybe String -> Maybe String
+        nonEmpty =
+            Maybe.andThen
+                (\value ->
+                    if String.isEmpty (String.trim value) then
+                        Nothing
+
+                    else
+                        Just value
+                )
+    in
+    case nonEmpty first of
+        Just value ->
+            Just value
+
+        Nothing ->
+            nonEmpty second
 
 
 libraryId : String -> Result String Int
@@ -230,22 +282,41 @@ targetsFor config chosen =
 
 
 fetch : FetchOptions -> BackendTask FatalError ()
-fetch options =
+fetch flags =
+    environment
+        |> BackendTask.andThen
+            (\env ->
+                let
+                    options : FetchOptions
+                    options =
+                        withEnvironment env flags
+                in
+                case options.db of
+                    Just db ->
+                        fetchInto db options
+
+                    Nothing ->
+                        BackendTask.fail (FatalError.fromString "Say which database to sync into: pass --db or set ZOT_SYNC_DB.")
+            )
+
+
+fetchInto : String -> FetchOptions -> BackendTask FatalError ()
+fetchInto db options =
     let
         config : { api : Api.Config, verbose : Bool }
         config =
             { api = { baseUrl = options.apiUrl, apiKey = options.key }, verbose = options.verbose }
     in
-    Sync.prepare options.db
+    Sync.prepare db
         |> BackendTask.andThen (\_ -> targetsFor config (selection options))
         |> BackendTask.andThen
             (\targets ->
                 if List.isEmpty targets then
-                    Script.log "The database is fine. Now say what to sync: --user, --group or --key (see zot-sync fetch --help)."
+                    Script.log "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)."
                         |> BackendTask.map (\_ -> [])
 
                 else
-                    Sync.loadSchema { db = options.db, api = config.api, verbose = options.verbose }
+                    Sync.loadSchema { db = db, api = config.api, verbose = options.verbose }
                         |> BackendTask.andThen
                             (\loaded ->
                                 (case loaded.warning of
@@ -260,7 +331,7 @@ fetch options =
                                             targets
                                                 |> List.map
                                                     (syncOne
-                                                        { db = options.db
+                                                        { db = db
                                                         , api = config.api
                                                         , verbose = options.verbose
                                                         , fulltext = not options.skipFulltext
@@ -393,7 +464,13 @@ summaryParts stats =
 
 
 check : CheckOptions -> BackendTask FatalError ()
-check options =
+check flags =
+    environment
+        |> BackendTask.andThen (\env -> checkWith (withEnvironment env flags))
+
+
+checkWith : CheckOptions -> BackendTask FatalError ()
+checkWith options =
     let
         config : { api : Api.Config, verbose : Bool }
         config =
@@ -420,7 +497,7 @@ check options =
                     BackendTask.succeed ()
     in
     if options.db == Nothing && options.key == Nothing then
-        BackendTask.fail (FatalError.fromString "Nothing to check: pass --db, --key, or both.")
+        BackendTask.fail (FatalError.fromString "Nothing to check: pass --db and/or --key, or set ZOT_SYNC_DB and/or ZOTERO_API_KEY.")
 
     else
         checkDb

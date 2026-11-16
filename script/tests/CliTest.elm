@@ -16,7 +16,7 @@ import Zotero.Library exposing (Library(..))
 
 options : ZotSync.FetchOptions
 options =
-    { db = "postgres://localhost/zotero"
+    { db = Just "postgres://localhost/zotero"
     , user = Nothing
     , group = Nothing
     , key = Nothing
@@ -105,12 +105,74 @@ suite =
                         |> respond "https://api.zotero.org/keys/current" 403 (Encode.string "Forbidden")
                         |> BackendTaskTest.expectFailureWith (\e -> String.contains "rejected the API key" e.body |> Expect.equal True)
             ]
+        , describe "settings from the environment"
+            [ test "a flag wins over its variable; empty values count as unset" <|
+                \() ->
+                    [ ZotSync.withEnvironment { db = Just "postgres://env", apiKey = Just "ENVKEY" } { db = Nothing, key = Nothing }
+                    , ZotSync.withEnvironment { db = Just "postgres://env", apiKey = Just "ENVKEY" } { db = Just "postgres://flag", key = Just "FLAGKEY" }
+                    , ZotSync.withEnvironment { db = Just "", apiKey = Just "  " } { db = Nothing, key = Nothing }
+                    , ZotSync.withEnvironment { db = Just "postgres://env", apiKey = Nothing } { db = Just "", key = Nothing }
+                    ]
+                        |> Expect.equal
+                            [ { db = Just "postgres://env", key = Just "ENVKEY" }
+                            , { db = Just "postgres://flag", key = Just "FLAGKEY" }
+                            , { db = Nothing, key = Nothing }
+                            , { db = Just "postgres://env", key = Nothing }
+                            ]
+            , test "with ZOT_SYNC_DB and ZOTERO_API_KEY set, fetch alone syncs what the key can read" <|
+                \() ->
+                    ZotSync.run
+                        |> BackendTaskTest.fromScriptWith
+                            (BackendTaskTest.init
+                                |> BackendTaskTest.withEnv "ZOT_SYNC_DB" "postgres://from-env"
+                                |> BackendTaskTest.withEnv "ZOTERO_API_KEY" "ENVKEY"
+                            )
+                            [ "fetch" ]
+                        |> BackendTaskTest.ensureCustom "pgQuery"
+                            (Decode.decodeValue (Decode.field "db" Decode.string) >> Expect.equal (Ok "postgres://from-env"))
+                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgTransaction" committed
+                        -- the key from the environment is used: key-based discovery starts
+                        |> respond "https://api.zotero.org/keys/current" 403 (Encode.string "Forbidden")
+                        |> BackendTaskTest.expectFailureWith (\e -> String.contains "rejected the API key" e.body |> Expect.equal True)
+            , test "--db on the command line wins over ZOT_SYNC_DB" <|
+                \() ->
+                    ZotSync.run
+                        |> BackendTaskTest.fromScriptWith (BackendTaskTest.init |> BackendTaskTest.withEnv "ZOT_SYNC_DB" "postgres://from-env")
+                            [ "fetch", "--db", "postgres://from-flag" ]
+                        |> BackendTaskTest.ensureCustom "pgQuery"
+                            (Decode.decodeValue (Decode.field "db" Decode.string) >> Expect.equal (Ok "postgres://from-flag"))
+                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgTransaction" committed
+                        |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)." ]
+                        |> BackendTaskTest.expectSuccess
+            , test "an empty ZOTERO_API_KEY is no key at all" <|
+                \() ->
+                    ZotSync.run
+                        |> BackendTaskTest.fromScriptWith
+                            (BackendTaskTest.init
+                                |> BackendTaskTest.withEnv "ZOT_SYNC_DB" "postgres://from-env"
+                                |> BackendTaskTest.withEnv "ZOTERO_API_KEY" ""
+                            )
+                            [ "fetch" ]
+                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgTransaction" committed
+                        |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)." ]
+                        |> BackendTaskTest.expectSuccess
+            , test "check uses ZOTERO_API_KEY too" <|
+                \() ->
+                    ZotSync.run
+                        |> BackendTaskTest.fromScriptWith (BackendTaskTest.init |> BackendTaskTest.withEnv "ZOTERO_API_KEY" "ENVKEY") [ "check" ]
+                        |> respond "https://api.zotero.org/keys/current" 200 (fixture Fixtures.keyInfoAllGroups)
+                        |> BackendTaskTest.ensureOutputWith (List.length >> Expect.equal 1)
+                        |> BackendTaskTest.expectSuccess
+            ]
         , describe "running the script"
-            [ test "fetch needs --db" <|
+            [ test "fetch needs a database" <|
                 \() ->
                     ZotSync.run
                         |> BackendTaskTest.fromScriptWith BackendTaskTest.init [ "fetch", "--user", "1" ]
-                        |> BackendTaskTest.expectTestError (String.contains "Missing required option: --db" >> Expect.equal True)
+                        |> BackendTaskTest.expectFailureWith (\e -> e.body |> Expect.equal "Say which database to sync into: pass --db or set ZOT_SYNC_DB.")
             , test "library ids must be numbers" <|
                 \() ->
                     ZotSync.run
@@ -124,7 +186,7 @@ suite =
                             (Decode.decodeValue (Decode.field "db" Decode.string) >> Expect.equal (Ok "postgres://x"))
                         |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
                         |> BackendTaskTest.simulateCustom "pgTransaction" committed
-                        |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group or --key (see zot-sync fetch --help)." ]
+                        |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)." ]
                         |> BackendTaskTest.expectSuccess
             , test "a zot-sync 0.3 database is refused before anything is written" <|
                 \() ->
@@ -136,7 +198,7 @@ suite =
                 \() ->
                     ZotSync.run
                         |> BackendTaskTest.fromScriptWith BackendTaskTest.init [ "check" ]
-                        |> BackendTaskTest.expectFailureWith (\e -> e.body |> Expect.equal "Nothing to check: pass --db, --key, or both.")
+                        |> BackendTaskTest.expectFailureWith (\e -> e.body |> Expect.equal "Nothing to check: pass --db and/or --key, or set ZOT_SYNC_DB and/or ZOTERO_API_KEY.")
             , test "check --key prints what the key can read, without the key" <|
                 \() ->
                     ZotSync.run

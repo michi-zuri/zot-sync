@@ -19,19 +19,19 @@ const DB = process.env.ZOT_SYNC_TEST_DB ?? "postgresql://root@/zot_sync_test?hos
 const USER = 1234567;
 const GROUP = 2345678;
 const KEY = "K";
+const ENV_KEY = "zotero-key-from-the-environment";
 
 const schemas = {
   v32: { etag: '"schema-v32"', document: fixture("schema-v32.json") },
   v42: { etag: '"schema-v42"', document: fixture("schema-v42.json") },
 };
 
-const keys = {
-  [KEY]: {
-    userID: USER,
-    username: "zot-sync-tester",
-    access: { user: { library: true, files: true, notes: true, write: false }, groups: { all: { library: true, write: false } } },
-  },
+const keyAccess = {
+  userID: USER,
+  username: "zot-sync-tester",
+  access: { user: { library: true, files: true, notes: true, write: false }, groups: { all: { library: true, write: false } } },
 };
+const keys = { [KEY]: keyAccess, [ENV_KEY]: keyAccess };
 
 let db;
 before(async () => {
@@ -50,12 +50,17 @@ beforeEach(async () => {
 const all = async (sql, params = []) => (await db.query(sql, params)).rows;
 const one = async (sql, params = []) => (await all(sql, params))[0];
 
-/** Run the CLI; resolves with its exit code and combined output. */
-function zotSync(args) {
+/**
+ * Run the CLI; resolves with its exit code and combined output. The caller's
+ * ZOT_SYNC_DB / ZOTERO_API_KEY are never inherited, so a developer's real
+ * settings cannot leak into a test; pass `env` to set them on purpose.
+ */
+function zotSync(args, env = {}) {
+  const { ZOT_SYNC_DB, ZOTERO_API_KEY, ...inherited } = process.env;
   return new Promise((resolve) => {
     const child = spawn(join(root, "node_modules", ".bin", "elm-pages"), ["run", "ZotSync", ...args], {
       cwd: root,
-      env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+      env: { ...inherited, NO_COLOR: "1", FORCE_COLOR: "0", ...env },
     });
     let out = "";
     child.stdout.on("data", (d) => (out += d));
@@ -364,6 +369,18 @@ test("skipping full text once does not lose it: the next run catches up", async 
     zotero.requests.length = 0;
     assert.equal((await zotSync(fetchArgs(zotero, "--user", String(USER), "--key", KEY))).code, 0);
     assert.deepEqual(zotero.requests.map((r) => r.path), ["/schema", `/users/${USER}/settings`]);
+  });
+});
+
+test("the database URL and the key can come from the environment, off the command line", async () => {
+  const lib = userLibrary();
+  await withZotero([lib], async (zotero) => {
+    const args = ["fetch", "--api-url", zotero.url];
+    const run = await zotSync(args, { ZOT_SYNC_DB: DB, ZOTERO_API_KEY: ENV_KEY });
+    assert.equal(run.code, 0, run.out);
+    assert.match(run.out, new RegExp(`zot_u_${USER} "zot-sync tester": version 0 -> ${lib.version}`));
+    assert.ok(zotero.requests.length > 0 && zotero.requests.every((r) => r.headers["zotero-api-key"] === ENV_KEY));
+    assert.ok(!args.some((a) => a.includes(ENV_KEY) || a.startsWith("postgres")), "nothing secret on the command line");
   });
 });
 

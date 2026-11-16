@@ -18,9 +18,18 @@ npm ci
 npm run build   # writes dist/zot-sync.mjs, a single self-contained file that only needs Node
 ```
 
+Give it the database and a Zotero API key (create one at <https://www.zotero.org/settings/keys>)
+through the environment, then sync:
+
 ```bash
-node dist/zot-sync.mjs fetch --db postgres://user:pass@localhost/zotero --key YOUR_ZOTERO_KEY
+export ZOT_SYNC_DB=postgres://user:pass@localhost/zotero
+export ZOTERO_API_KEY=...
+node dist/zot-sync.mjs fetch
 ```
+
+`ZOT_SYNC_DB` and `ZOTERO_API_KEY` stand in for `--db` and `--key`; a flag wins over its
+variable. Prefer the variables on shared machines: command-line arguments, including a key
+or a password in a database URL, are visible to every user in the process list.
 
 | Command | Syncs |
 | --- | --- |
@@ -30,10 +39,10 @@ node dist/zot-sync.mjs fetch --db postgres://user:pass@localhost/zotero --key YO
 | `fetch --db URL --user ID --all` or `--key KEY --all` | a user's library and all their groups |
 | `check --db URL` / `check --key KEY` | checks the database, or shows what a key can read |
 
-More options for `fetch`: `--skip` leaves out the user library (with `--all` or `--key`),
-`--skip-fulltext` skips attachment full text, `--verbose` logs every request. API keys are
-created at <https://www.zotero.org/settings/keys>. Run zot-sync as often as you like (cron, a
-timer): an unchanged library costs one small request per run.
+In the table, `--db URL` and `--key KEY` can always be replaced by the variables. More options
+for `fetch`: `--skip` leaves out the user library (with `--all` or `--key`), `--skip-fulltext`
+skips attachment full text, `--verbose` logs every request. Run zot-sync as often as you like
+(cron, a systemd timer): an unchanged library costs one small request per run.
 
 Without building, `npx elm-pages run ZotSync fetch ...` runs the same script from source.
 
