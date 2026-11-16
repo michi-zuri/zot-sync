@@ -1,0 +1,243 @@
+[
+ {
+  "key": "GH8I9J2K",
+  "version": 122,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/GH8I9J2K",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/GH8I9J2K",
+    "type": "text/html"
+   },
+   "up": {
+    "href": "https://api.zotero.org/users/1234567/items/AB2C3D4E",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numChildren": 0
+  },
+  "data": {
+   "key": "GH8I9J2K",
+   "version": 122,
+   "itemType": "note",
+   "parentItem": "AB2C3D4E",
+   "note": "<p>{not valid json}</p>",
+   "tags": [],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "HI9J2K3L",
+  "version": 123,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/HI9J2K3L",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/HI9J2K3L",
+    "type": "text/html"
+   },
+   "up": {
+    "href": "https://api.zotero.org/users/1234567/items/AB2C3D4E",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numChildren": 1
+  },
+  "data": {
+   "key": "HI9J2K3L",
+   "version": 123,
+   "itemType": "attachment",
+   "parentItem": "AB2C3D4E",
+   "title": "Full Text PDF",
+   "accessDate": "2021-06-01T10:01:00Z",
+   "url": "https://example.org/paper.pdf",
+   "linkMode": "imported_url",
+   "note": "",
+   "contentType": "application/pdf",
+   "charset": "",
+   "filename": "Doe - 2021 - Mirroring bibliographies.pdf",
+   "md5": "9e107d9d372bb6826bd81d3542a419d6",
+   "mtime": 1622541660000,
+   "tags": [],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "IJ2K3L4M",
+  "version": 124,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/IJ2K3L4M",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/IJ2K3L4M",
+    "type": "text/html"
+   },
+   "up": {
+    "href": "https://api.zotero.org/users/1234567/items/AB2C3D4E",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numChildren": 0
+  },
+  "data": {
+   "key": "IJ2K3L4M",
+   "version": 124,
+   "itemType": "attachment",
+   "parentItem": "AB2C3D4E",
+   "title": "Snapshot",
+   "accessDate": "2021-06-01T10:02:00Z",
+   "url": "https://example.org/paper",
+   "linkMode": "imported_url",
+   "note": "",
+   "contentType": "text/html",
+   "charset": "utf-8",
+   "filename": "snapshot.html",
+   "md5": null,
+   "mtime": null,
+   "tags": [],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "JK3L4M5N",
+  "version": 125,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/JK3L4M5N",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/JK3L4M5N",
+    "type": "text/html"
+   },
+   "up": {
+    "href": "https://api.zotero.org/users/1234567/items/HI9J2K3L",
+    "type": "application/json"
+   }
+  },
+  "meta": {},
+  "data": {
+   "key": "JK3L4M5N",
+   "version": 125,
+   "itemType": "annotation",
+   "parentItem": "HI9J2K3L",
+   "annotationType": "highlight",
+   "annotationText": "mirrors drift",
+   "annotationComment": "key claim",
+   "annotationColor": "#ffd400",
+   "annotationPageLabel": "3",
+   "annotationSortIndex": "00002|000123|00456",
+   "annotationPosition": "{\"pageIndex\":2,\"rects\":[[100.5,200.25,300.75,212.5]]}",
+   "tags": [
+    {
+     "tag": "important"
+    }
+   ],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z"
+  }
+ },
+ {
+  "key": "KL4M5N6P",
+  "version": 126,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/KL4M5N6P",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/KL4M5N6P",
+    "type": "text/html"
+   },
+   "up": {
+    "href": "https://api.zotero.org/users/1234567/items/BC3D4E5F",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numChildren": 0
+  },
+  "data": {
+   "key": "KL4M5N6P",
+   "version": 126,
+   "itemType": "note",
+   "parentItem": "BC3D4E5F",
+   "note": "<p>plain note without any data</p>",
+   "deleted": true,
+   "tags": [],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ }
+]

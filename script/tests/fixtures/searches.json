@@ -1,0 +1,40 @@
+[
+ {
+  "key": "SA2B3C4D",
+  "version": 113,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/searches/SA2B3C4D",
+    "type": "application/json"
+   }
+  },
+  "data": {
+   "key": "SA2B3C4D",
+   "version": 113,
+   "name": "Unscreened PDFs",
+   "conditions": [
+    {
+     "condition": "itemType",
+     "operator": "is",
+     "value": "attachment"
+    },
+    {
+     "condition": "tag",
+     "operator": "isNot",
+     "value": "screened"
+    }
+   ]
+  }
+ }
+]

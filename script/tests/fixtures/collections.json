@@ -1,0 +1,99 @@
+[
+ {
+  "key": "CQ2R3S4T",
+  "version": 110,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/collections/CQ2R3S4T",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numCollections": 1,
+   "numItems": 3
+  },
+  "data": {
+   "key": "CQ2R3S4T",
+   "version": 110,
+   "name": "Systematic review",
+   "parentCollection": false,
+   "relations": {}
+  }
+ },
+ {
+  "key": "DR3S4T5U",
+  "version": 111,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/collections/DR3S4T5U",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numCollections": 0,
+   "numItems": 1
+  },
+  "data": {
+   "key": "DR3S4T5U",
+   "version": 111,
+   "name": "Included",
+   "parentCollection": "CQ2R3S4T",
+   "relations": {}
+  }
+ },
+ {
+  "key": "ES4T5U6V",
+  "version": 112,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/collections/ES4T5U6V",
+    "type": "application/json"
+   }
+  },
+  "meta": {
+   "numCollections": 0,
+   "numItems": 0
+  },
+  "data": {
+   "key": "ES4T5U6V",
+   "version": 112,
+   "name": "Old drafts",
+   "parentCollection": false,
+   "relations": {},
+   "deleted": true
+  }
+ }
+]

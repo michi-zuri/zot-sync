@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "sync": "elm-pages run ZotSync",
-    "test": "cd script && elm-test"
+    "test": "npm run test:unit",
+    "test:unit": "node script/tests/generate-fixtures.mjs && cd script && elm-test"
   },
   "devDependencies": {
     "elm": "0.19.1-6",

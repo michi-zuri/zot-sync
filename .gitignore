@@ -8,3 +8,4 @@ src/schema.json
 node_modules/
 elm-stuff/
 .elm-pages/
+script/tests/Fixtures.elm

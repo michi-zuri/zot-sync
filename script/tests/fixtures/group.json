@@ -1,0 +1,30 @@
+{
+ "id": 2345678,
+ "version": 7,
+ "links": {
+  "self": {
+   "href": "https://api.zotero.org/groups/2345678",
+   "type": "application/json"
+  }
+ },
+ "meta": {
+  "created": "2019-01-01T00:00:00Z",
+  "lastModified": "2025-01-01T00:00:00Z",
+  "numItems": 42
+ },
+ "data": {
+  "id": 2345678,
+  "version": 7,
+  "name": "Sync Research Group",
+  "owner": 1234567,
+  "type": "Private",
+  "description": "",
+  "url": "",
+  "libraryEditing": "members",
+  "libraryReading": "members",
+  "fileEditing": "members",
+  "members": [
+   1234567
+  ]
+ }
+}

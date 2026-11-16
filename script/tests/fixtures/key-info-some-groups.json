@@ -1,0 +1,18 @@
+{
+ "key": "REDACTED",
+ "userID": 1234567,
+ "username": "zot-sync-tester",
+ "displayName": "",
+ "access": {
+  "groups": {
+   "2345678": {
+    "library": true,
+    "write": false
+   },
+   "3456789": {
+    "library": false,
+    "write": false
+   }
+  }
+ }
+}

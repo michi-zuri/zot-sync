@@ -1,0 +1,393 @@
+[
+ {
+  "key": "AB2C3D4E",
+  "version": 120,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/AB2C3D4E",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/AB2C3D4E",
+    "type": "text/html"
+   }
+  },
+  "meta": {
+   "creatorSummary": "Doe and Roe",
+   "parsedDate": "2021-05-03",
+   "numChildren": 3
+  },
+  "data": {
+   "key": "AB2C3D4E",
+   "version": 120,
+   "itemType": "journalArticle",
+   "title": "Mirroring bibliographies",
+   "abstractNote": "",
+   "publicationTitle": "Journal of Sync",
+   "publisher": "",
+   "place": "",
+   "date": "2021-05-03",
+   "volume": "7",
+   "issue": "2",
+   "section": "",
+   "partNumber": "",
+   "partTitle": "",
+   "pages": "1-10",
+   "series": "",
+   "seriesTitle": "",
+   "seriesText": "",
+   "journalAbbreviation": "",
+   "DOI": "10.1234/sync.7.2",
+   "citationKey": "",
+   "url": "",
+   "accessDate": "2021-06-01T10:00:00Z",
+   "PMID": "",
+   "PMCID": "",
+   "ISSN": "",
+   "archive": "",
+   "archiveLocation": "",
+   "shortTitle": "",
+   "language": "en",
+   "libraryCatalog": "",
+   "callNumber": "",
+   "rights": "",
+   "extra": "",
+   "creators": [
+    {
+     "creatorType": "author",
+     "firstName": "Jane",
+     "lastName": "Doe"
+    },
+    {
+     "creatorType": "author",
+     "name": "Roe Lab"
+    }
+   ],
+   "tags": [
+    {
+     "tag": "replication"
+    },
+    {
+     "tag": "postgres",
+     "type": 1
+    }
+   ],
+   "collections": [
+    "CQ2R3S4T"
+   ],
+   "relations": {
+    "owl:sameAs": "http://zotero.org/groups/2345678/items/XY2Z3W4V"
+   },
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "BC3D4E5F",
+  "version": 118,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/BC3D4E5F",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/BC3D4E5F",
+    "type": "text/html"
+   }
+  },
+  "meta": {
+   "creatorSummary": "Smith",
+   "parsedDate": "1999",
+   "numChildren": 0
+  },
+  "data": {
+   "key": "BC3D4E5F",
+   "version": 118,
+   "itemType": "book",
+   "title": "Versioned Data",
+   "abstractNote": "",
+   "series": "",
+   "seriesNumber": "",
+   "volume": "",
+   "numberOfVolumes": "",
+   "edition": "",
+   "date": "1999",
+   "publisher": "Example Press",
+   "place": "Zurich",
+   "originalDate": "",
+   "originalPublisher": "",
+   "originalPlace": "",
+   "format": "",
+   "numPages": "",
+   "ISBN": "9780000000002",
+   "DOI": "",
+   "citationKey": "",
+   "url": "",
+   "accessDate": "CURRENT_TIMESTAMP",
+   "ISSN": "",
+   "archive": "",
+   "archiveLocation": "",
+   "shortTitle": "",
+   "language": "",
+   "libraryCatalog": "",
+   "callNumber": "",
+   "rights": "",
+   "extra": "",
+   "creators": [
+    {
+     "creatorType": "author",
+     "firstName": "Ann",
+     "lastName": "Smith"
+    },
+    {
+     "creatorType": "editor",
+     "firstName": "Bo",
+     "lastName": "Li"
+    }
+   ],
+   "collections": [
+    "CQ2R3S4T",
+    "DR3S4T5U"
+   ],
+   "tags": [],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "CD4E5F6G",
+  "version": 117,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/CD4E5F6G",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/CD4E5F6G",
+    "type": "text/html"
+   }
+  },
+  "meta": {
+   "creatorSummary": "",
+   "parsedDate": "2020-01-15",
+   "numChildren": 0
+  },
+  "data": {
+   "key": "CD4E5F6G",
+   "version": 117,
+   "itemType": "case",
+   "caseName": "Doe v. Roe",
+   "abstractNote": "",
+   "court": "Supreme Court",
+   "dateDecided": "2020-01-15",
+   "docketNumber": "19-123",
+   "reporter": "U.S.",
+   "reporterVolume": "590",
+   "firstPage": "1",
+   "history": "",
+   "DOI": "",
+   "citationKey": "",
+   "url": "",
+   "accessDate": "",
+   "shortTitle": "",
+   "language": "",
+   "rights": "",
+   "extra": "",
+   "creators": [],
+   "tags": [],
+   "relations": {},
+   "collections": [],
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "DE5F6G7H",
+  "version": 119,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/DE5F6G7H",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/DE5F6G7H",
+    "type": "text/html"
+   }
+  },
+  "meta": {
+   "numChildren": 0
+  },
+  "data": {
+   "key": "DE5F6G7H",
+   "version": 119,
+   "itemType": "note",
+   "note": "<p>screening decision</p>\n<p>{\"decision\": \"include\", \"score\": 4}</p>",
+   "tags": [
+    {
+     "tag": "screened"
+    }
+   ],
+   "collections": [
+    "CQ2R3S4T"
+   ],
+   "relations": {},
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "EF6G7H8I",
+  "version": 116,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/EF6G7H8I",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/EF6G7H8I",
+    "type": "text/html"
+   }
+  },
+  "meta": {
+   "numChildren": 0
+  },
+  "data": {
+   "key": "EF6G7H8I",
+   "version": 116,
+   "itemType": "attachment",
+   "title": "Project website",
+   "accessDate": "2021-06-03T08:00:00Z",
+   "url": "https://example.org/project",
+   "linkMode": "linked_url",
+   "note": "",
+   "contentType": "",
+   "charset": "",
+   "tags": [],
+   "relations": {},
+   "collections": [],
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ },
+ {
+  "key": "FG7H8I9J",
+  "version": 121,
+  "library": {
+   "type": "user",
+   "id": 1234567,
+   "name": "zot-sync tester",
+   "links": {
+    "alternate": {
+     "href": "https://www.zotero.org/zot-sync-tester",
+     "type": "text/html"
+    }
+   }
+  },
+  "links": {
+   "self": {
+    "href": "https://api.zotero.org/users/1234567/items/FG7H8I9J",
+    "type": "application/json"
+   },
+   "alternate": {
+    "href": "https://www.zotero.org/users/1234567/items/FG7H8I9J",
+    "type": "text/html"
+   }
+  },
+  "meta": {
+   "creatorSummary": "Host",
+   "parsedDate": "2024-02-01",
+   "numChildren": 0
+  },
+  "data": {
+   "key": "FG7H8I9J",
+   "version": 121,
+   "itemType": "podcast",
+   "title": "Sync Talk",
+   "abstractNote": "",
+   "seriesTitle": "",
+   "episodeNumber": "12",
+   "audioFileType": "",
+   "date": "2024-02-01",
+   "publisher": "",
+   "place": "",
+   "runningTime": "42:00",
+   "DOI": "",
+   "citationKey": "",
+   "url": "",
+   "accessDate": "",
+   "shortTitle": "",
+   "language": "",
+   "rights": "",
+   "extra": "",
+   "creators": [
+    {
+     "creatorType": "podcaster",
+     "lastName": "Host",
+     "firstName": "Pat"
+    }
+   ],
+   "deleted": 1,
+   "tags": [],
+   "relations": {},
+   "collections": [],
+   "dateAdded": "2021-06-01T10:00:00Z",
+   "dateModified": "2021-06-02T11:30:00Z"
+  }
+ }
+]
