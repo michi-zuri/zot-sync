@@ -10,7 +10,9 @@ up automatically. It is an [elm-pages](https://elm-pages.com) script.
 
 ## Usage
 
-Requires Node 20 or newer and PostgreSQL (tested with 16; any version from 10 should work).
+Requires Node 20 or newer and PostgreSQL 10 or newer; 16 or newer is recommended (tested with 16).
+From 16 on, the views' safe casts check their input with `pg_input_is_valid()`. Older servers fall
+back to exception handlers, which are slower and keep queries that use them from running in parallel.
 
 ```bash
 git clone https://github.com/michi-zuri/zot-sync && cd zot-sync

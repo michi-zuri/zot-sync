@@ -38,6 +38,18 @@ rows values =
     Encode.object [ ( "ok", Encode.bool True ), ( "rows", Encode.list identity values ), ( "rowCount", Encode.int (List.length values) ) ]
 
 
+{-| The database's answer to Db.Layout.inspect: PostgreSQL 16, no 0.3 tables.
+-}
+inspected : Encode.Value
+inspected =
+    inspectedWith []
+
+
+inspectedWith : List String -> Encode.Value
+inspectedWith legacy =
+    rows [ Encode.object [ ( "server_version", Encode.int 160004 ), ( "legacy_tables", Encode.list Encode.string legacy ) ] ]
+
+
 committed : Encode.Value
 committed =
     Encode.object [ ( "ok", Encode.bool True ), ( "results", Encode.list identity [] ) ]
@@ -130,7 +142,7 @@ suite =
                             [ "fetch" ]
                         |> BackendTaskTest.ensureCustom "pgQuery"
                             (Decode.decodeValue (Decode.field "db" Decode.string) >> Expect.equal (Ok "postgres://from-env"))
-                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgQuery" inspected
                         |> BackendTaskTest.simulateCustom "pgTransaction" committed
                         -- the key from the environment is used: key-based discovery starts
                         |> respond "https://api.zotero.org/keys/current" 403 (Encode.string "Forbidden")
@@ -142,7 +154,7 @@ suite =
                             [ "fetch", "--db", "postgres://from-flag" ]
                         |> BackendTaskTest.ensureCustom "pgQuery"
                             (Decode.decodeValue (Decode.field "db" Decode.string) >> Expect.equal (Ok "postgres://from-flag"))
-                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgQuery" inspected
                         |> BackendTaskTest.simulateCustom "pgTransaction" committed
                         |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)." ]
                         |> BackendTaskTest.expectSuccess
@@ -155,7 +167,7 @@ suite =
                                 |> BackendTaskTest.withEnv "ZOTERO_API_KEY" ""
                             )
                             [ "fetch" ]
-                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgQuery" inspected
                         |> BackendTaskTest.simulateCustom "pgTransaction" committed
                         |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)." ]
                         |> BackendTaskTest.expectSuccess
@@ -184,7 +196,7 @@ suite =
                         |> BackendTaskTest.fromScriptWith BackendTaskTest.init [ "fetch", "--db", "postgres://x" ]
                         |> BackendTaskTest.ensureCustom "pgQuery"
                             (Decode.decodeValue (Decode.field "db" Decode.string) >> Expect.equal (Ok "postgres://x"))
-                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                        |> BackendTaskTest.simulateCustom "pgQuery" inspected
                         |> BackendTaskTest.simulateCustom "pgTransaction" committed
                         |> BackendTaskTest.ensureStdout [ "The database is fine. Now say what to sync: --user, --group, or --key or ZOTERO_API_KEY (see zot-sync fetch --help)." ]
                         |> BackendTaskTest.expectSuccess
@@ -192,7 +204,7 @@ suite =
                 \() ->
                     ZotSync.run
                         |> BackendTaskTest.fromScriptWith BackendTaskTest.init [ "fetch", "--db", "postgres://x", "--user", "1" ]
-                        |> BackendTaskTest.simulateCustom "pgQuery" (rows [ Encode.object [ ( "name", Encode.string "logs.zot_fetch" ) ] ])
+                        |> BackendTaskTest.simulateCustom "pgQuery" (inspectedWith [ "logs.zot_fetch" ])
                         |> BackendTaskTest.expectFailureWith (\e -> String.contains "zot-sync 0.3 layout (logs.zot_fetch" e.body |> Expect.equal True)
             , test "check needs something to check" <|
                 \() ->

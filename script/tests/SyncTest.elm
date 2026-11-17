@@ -29,6 +29,18 @@ affected n =
     Encode.object [ ( "ok", Encode.bool True ), ( "rows", Encode.list identity [] ), ( "rowCount", Encode.int n ) ]
 
 
+{-| The database's answer to Db.Layout.inspect: PostgreSQL 16, no 0.3 tables.
+-}
+inspected : Encode.Value
+inspected =
+    inspectedWith []
+
+
+inspectedWith : List String -> Encode.Value
+inspectedWith legacy =
+    rows [ Encode.object [ ( "server_version", Encode.int 160004 ), ( "legacy_tables", Encode.list Encode.string legacy ) ] ]
+
+
 committed : Encode.Value
 committed =
     Encode.object [ ( "ok", Encode.bool True ), ( "results", Encode.list identity [] ) ]
@@ -53,7 +65,7 @@ layout transaction, and a cached schema that the API confirms with 304.
 -}
 preparedWithCachedSchema test_ =
     test_
-        |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+        |> BackendTaskTest.simulateCustom "pgQuery" inspected
         |> BackendTaskTest.simulateCustom "pgTransaction" committed
         |> BackendTaskTest.ensureCustom "pgQuery" (sqlStartsWith "SELECT version, etag, document FROM zotero.schema")
         |> BackendTaskTest.simulateCustom "pgQuery"
@@ -94,7 +106,7 @@ suite =
             \() ->
                 ZotSync.run
                     |> BackendTaskTest.fromScriptWith BackendTaskTest.init [ "fetch", "--db", "postgres://x", "--key", "K", "--all" ]
-                    |> BackendTaskTest.simulateCustom "pgQuery" (rows [])
+                    |> BackendTaskTest.simulateCustom "pgQuery" inspected
                     |> BackendTaskTest.simulateCustom "pgTransaction" committed
                     |> respond "https://api.zotero.org/keys/current" 200 [] (fixture Fixtures.keyInfoAllGroups)
                     |> respond "https://api.zotero.org/users/1234567/groups?format=versions" 200 [] (Encode.object [ ( "2345678", Encode.int 7 ) ])

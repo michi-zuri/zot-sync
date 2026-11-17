@@ -180,17 +180,22 @@ fulltextParallelism =
 -}
 prepare : String -> BackendTask Error ()
 prepare db =
-    Db.query db Layout.legacyCheck (Decode.field "name" Decode.string)
+    Db.query db Layout.inspect Layout.inspectionDecoder
         |> BackendTask.mapError DbError
         |> BackendTask.andThen
-            (\legacy ->
-                if List.isEmpty legacy then
-                    Db.transaction db Layout.setup
-                        |> BackendTask.mapError DbError
-                        |> BackendTask.map (\_ -> ())
+            (\rows ->
+                case rows of
+                    [ inspection ] ->
+                        if List.isEmpty inspection.legacyTables then
+                            Db.transaction db (Layout.setup inspection.serverVersion)
+                                |> BackendTask.mapError DbError
+                                |> BackendTask.map (\_ -> ())
 
-                else
-                    BackendTask.fail (LegacyLayout legacy)
+                        else
+                            BackendTask.fail (LegacyLayout inspection.legacyTables)
+
+                    _ ->
+                        BackendTask.fail (BadResponse { url = "the database", problem = "inspecting the server returned " ++ String.fromInt (List.length rows) ++ " rows" })
             )
 
 

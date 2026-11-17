@@ -1,4 +1,8 @@
-module Db.Layout exposing (setup, legacyCheck, legacyMessage, layoutVersion)
+module Db.Layout exposing
+    ( setup, layoutVersion
+    , inspect, Inspection, inspectionDecoder, legacyMessage
+    , inputValidationSince
+    )
 
 {-| The tables zot-sync writes to. They hold every object exactly as the Zotero
 API returned it (`data`/`meta` as jsonb), so nothing is ever lost and the query
@@ -15,11 +19,14 @@ views (see `Db.Views`) can be rebuilt from them at any time.
     zotero.sync_run     one row per library sync attempt
     logs.zot_fetch      view with zot-sync 0.3's sync log columns
 
-@docs setup, legacyCheck, legacyMessage, layoutVersion
+@docs setup, layoutVersion
+@docs inspect, Inspection, inspectionDecoder, legacyMessage
+@docs inputValidationSince
 
 -}
 
 import Db.Sql as Sql exposing (Statement)
+import Json.Decode as Decode exposing (Decoder)
 
 
 {-| Bumped when the table layout changes; stored in `zotero.meta`.
@@ -29,10 +36,11 @@ layoutVersion =
     1
 
 
-{-| Idempotent DDL, run in one transaction at the start of every run.
+{-| Idempotent DDL, run in one transaction at the start of every run. The
+safe casts depend on the server version (`server_version_num`).
 -}
-setup : List Statement
-setup =
+setup : Int -> List Statement
+setup serverVersion =
     [ "CREATE SCHEMA IF NOT EXISTS zotero"
     , """CREATE TABLE IF NOT EXISTS zotero.meta (
     key text PRIMARY KEY,
@@ -107,19 +115,19 @@ setup =
     error text,
     stats jsonb
 )"""
-    , safeCast "try_jsonb" "jsonb" "IMMUTABLE"
-    , safeCast "try_integer" "integer" "IMMUTABLE"
-    , safeCast "try_bigint" "bigint" "IMMUTABLE"
-    , safeCast "try_boolean" "boolean" "IMMUTABLE"
-    , -- Text-to-time casts depend on DateStyle/TimeZone, so they are STABLE, not IMMUTABLE.
-      safeCast "try_timestamp" "timestamp" "STABLE"
-    , safeCast "try_timestamptz" "timestamptz" "STABLE"
+    , safeCast serverVersion "try_jsonb" "jsonb"
+    , safeCast serverVersion "try_integer" "integer"
+    , safeCast serverVersion "try_bigint" "bigint"
+    , safeCast serverVersion "try_boolean" "boolean"
+    , safeCast serverVersion "try_timestamp" "timestamp"
+    , safeCast serverVersion "try_timestamptz" "timestamptz"
     , -- zot-sync 0.3's customJSON: the first {...} on a single line of a note, parsed as JSON.
       -- (?n) makes '.' stop at newlines, like Python's re.findall(r'{.*}', note)[0].
       -- A note without JSON, or with JSON that does not parse, gives NULL instead of an error.
-      """CREATE OR REPLACE FUNCTION zotero.custom_json(note text) RETURNS jsonb
-LANGUAGE sql IMMUTABLE PARALLEL SAFE AS
-$$ SELECT zotero.try_jsonb(substring(note from '(?n)\\{.*\\}')) $$"""
+      -- Labelled like try_jsonb, so that both are inlined into the queries that use them.
+      "CREATE OR REPLACE FUNCTION zotero.custom_json(note text) RETURNS jsonb\nLANGUAGE sql STABLE "
+        ++ parallelLabel serverVersion
+        ++ " AS\n$$ SELECT zotero.try_jsonb(substring(note from '(?n)\\{.*\\}')) $$"
     , "CREATE SCHEMA IF NOT EXISTS logs"
     , """CREATE OR REPLACE VIEW logs.zot_fetch AS
 SELECT r.id,
@@ -150,34 +158,97 @@ objectTable name =
 )"""
 
 
+{-| The first `server_version_num` with `pg_input_is_valid()` (PostgreSQL 16).
+-}
+inputValidationSince : Int
+inputValidationSince =
+    160000
+
+
 {-| A cast that returns NULL instead of raising, so one odd value (an
 `accessDate` of "CURRENT\_TIMESTAMP", a note with broken JSON) can never make a
 query over a view fail.
+
+From PostgreSQL 16, `pg_input_is_valid()` tests the input first. That needs no
+exception handler, so no subtransaction, and only invalid input becomes NULL:
+any other error is raised. A PL/pgSQL `EXCEPTION WHEN others` handler also
+swallowed unrelated errors, which on PostgreSQL 18 silently turned valid values
+into NULL (michi-zuri/zot-sync#1). Older servers keep that handler, as they
+have no other way to test a cast.
+
+The cast is applied to the result of the CASE, not inside it: the function is
+inlined, and with a constant argument Postgres would otherwise fold
+`'{broken'::jsonb` while planning and raise before the CASE could skip it.
+
+All casts are STABLE: `pg_input_is_valid()` is, and an SQL function is only
+inlined when its label is no stricter than its body. No index uses them. The
+exception handler's subtransaction cannot run in a parallel worker, so the
+fallback is PARALLEL UNSAFE (0.4.0 wrongly said SAFE, which fails parallel
+queries).
+
 -}
-safeCast : String -> String -> String -> String
-safeCast name sqlType volatility =
-    "CREATE OR REPLACE FUNCTION zotero."
-        ++ name
-        ++ "(value text) RETURNS "
-        ++ sqlType
-        ++ "\nLANGUAGE plpgsql "
-        ++ volatility
-        ++ " PARALLEL SAFE AS\n$$ BEGIN RETURN value::"
-        ++ sqlType
-        ++ "; EXCEPTION WHEN others THEN RETURN NULL; END $$"
+safeCast : Int -> String -> String -> String
+safeCast serverVersion name sqlType =
+    let
+        signature : String
+        signature =
+            "CREATE OR REPLACE FUNCTION zotero." ++ name ++ "(value text) RETURNS " ++ sqlType
+    in
+    if serverVersion >= inputValidationSince then
+        signature
+            ++ "\nLANGUAGE sql STABLE PARALLEL SAFE AS\n$$ SELECT (CASE WHEN pg_input_is_valid(value, "
+            ++ Sql.literal sqlType
+            ++ ") THEN value END)::"
+            ++ sqlType
+            ++ " $$"
+
+    else
+        signature
+            ++ "\nLANGUAGE plpgsql STABLE PARALLEL UNSAFE AS\n$$ BEGIN RETURN value::"
+            ++ sqlType
+            ++ "; EXCEPTION WHEN others THEN RETURN NULL; END $$"
 
 
-{-| Finds tables from zot-sync 0.3, whose names the new views reuse.
+{-| Functions built on the exception-handler casts must not run in parallel workers.
 -}
-legacyCheck : Statement
-legacyCheck =
-    Sql.statement """SELECT n.nspname || '.' || c.relname AS name
-FROM pg_catalog.pg_class c
-JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind IN ('r', 'p')
-  AND ((n.nspname = 'logs' AND c.relname = 'zot_fetch')
-       OR (n.nspname ~ '^zot_[ug]_[0-9]+$' AND c.relname = 'items'))
-ORDER BY 1""" []
+parallelLabel : Int -> String
+parallelLabel serverVersion =
+    if serverVersion >= inputValidationSince then
+        "PARALLEL SAFE"
+
+    else
+        "PARALLEL UNSAFE"
+
+
+{-| What `setup` needs to know about the database first.
+-}
+type alias Inspection =
+    { serverVersion : Int
+    , legacyTables : List String
+    }
+
+
+{-| The server version, and the tables from zot-sync 0.3 whose names the new
+views reuse (a run refuses to start if there are any). One row.
+-}
+inspect : Statement
+inspect =
+    Sql.statement """SELECT current_setting('server_version_num')::integer AS server_version,
+       ARRAY(SELECT n.nspname || '.' || c.relname
+             FROM pg_catalog.pg_class c
+             JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+             WHERE c.relkind IN ('r', 'p')
+               AND ((n.nspname = 'logs' AND c.relname = 'zot_fetch')
+                    OR (n.nspname ~ '^zot_[ug]_[0-9]+$' AND c.relname = 'items'))
+             ORDER BY 1) AS legacy_tables""" []
+
+
+{-| -}
+inspectionDecoder : Decoder Inspection
+inspectionDecoder =
+    Decode.map2 Inspection
+        (Decode.field "server_version" Decode.int)
+        (Decode.field "legacy_tables" (Decode.list Decode.string))
 
 
 {-| -}

@@ -384,6 +384,110 @@ test("the database URL and the key can come from the environment, off the comman
   });
 });
 
+// The safe casts as zot-sync 0.4.0 defined them: PL/pgSQL with a catch-all handler.
+const castTypes = { try_jsonb: "jsonb", try_integer: "integer", try_bigint: "bigint", try_boolean: "boolean", try_timestamp: "timestamp", try_timestamptz: "timestamptz" };
+const volatility040 = { try_timestamp: "STABLE", try_timestamptz: "STABLE" };
+const cast040 = (schema, name) =>
+  `CREATE OR REPLACE FUNCTION ${schema}.${name}(value text) RETURNS ${castTypes[name]}
+   LANGUAGE plpgsql ${volatility040[name] ?? "IMMUTABLE"} PARALLEL SAFE AS
+   $$ BEGIN RETURN value::${castTypes[name]}; EXCEPTION WHEN others THEN RETURN NULL; END $$`;
+
+test("the safe casts answer exactly as 0.4.0's did, without exception handlers (michi-zuri/zot-sync#1)", async () => {
+  const run = await zotSync(["check", "--db", DB]);
+  assert.equal(run.code, 0, run.out);
+  await db.query("DROP SCHEMA IF EXISTS old_casts CASCADE; CREATE SCHEMA old_casts");
+  try {
+    for (const name of Object.keys(castTypes)) await db.query(cast040("old_casts", name));
+    const inputs = [
+      null, "", "  12 ", "12.5", "abc", "2147483648", "-2147483649", "9223372036854775808", "1700000000000",
+      "true", "yes", "t", "maybe", '{"a": 1}', "{broken", '"scalar"', "42", "[1, 2]",
+      "2024-03-01T10:00:00Z", "2024-02-30", "CURRENT_TIMESTAMP", "infinity", "2019-05-10 12:00:00",
+    ];
+    const differences = [];
+    for (const name of Object.keys(castTypes)) {
+      for (const input of inputs) {
+        const { rows } = await db.query(`SELECT old_casts.${name}($1)::text AS old, zotero.${name}($1)::text AS new`, [input]);
+        if (rows[0].old !== rows[0].new) differences.push({ name, input, ...rows[0] });
+      }
+    }
+    assert.deepEqual(differences, []);
+  } finally {
+    await db.query("DROP SCHEMA old_casts CASCADE");
+  }
+  assert.deepEqual(
+    await all(`SELECT p.proname, l.lanname, p.provolatile, p.prosrc LIKE '%pg_input_is_valid%' AS validates
+               FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang
+               WHERE n.nspname = 'zotero' AND p.proname LIKE 'try\_%' ORDER BY 1`),
+    Object.keys(castTypes).sort().map((proname) => ({ proname, lanname: "sql", provolatile: "s", validates: true }))
+  );
+});
+
+test("the safe casts are inlined into the queries that use them", async () => {
+  assert.equal((await zotSync(["check", "--db", DB])).code, 0);
+  const plan = async (sql) => (await all(`EXPLAIN (VERBOSE, COSTS OFF) ${sql}`)).map((r) => r["QUERY PLAN"]).join("\n");
+  const customJson = await plan(`SELECT zotero.custom_json(n) FROM (VALUES ('<p>{"a": 1}</p>')) AS v(n)`);
+  assert.match(customJson, /pg_input_is_valid/);
+  assert.doesNotMatch(customJson, /custom_json|try_jsonb/);
+  const timestamp = await plan(`SELECT zotero.try_timestamptz(t) FROM (VALUES ('2021-06-01T10:00:00Z')) AS v(t)`);
+  assert.match(timestamp, /pg_input_is_valid/);
+  assert.doesNotMatch(timestamp, /try_timestamptz/);
+});
+
+test("a database set up by 0.4.0 gets the new casts on its next run, and views on top keep working", async () => {
+  const lib = userLibrary();
+  await withZotero([lib], async (zotero) => {
+    assert.equal((await zotSync(fetchArgs(zotero, "--user", String(USER), "--key", KEY))).code, 0);
+    // Put back what 0.4.0 installed, with a view of the user's on top of the generated ones.
+    for (const name of Object.keys(castTypes)) await db.query(cast040("zotero", name));
+    await db.query(`CREATE OR REPLACE FUNCTION zotero.custom_json(note text) RETURNS jsonb LANGUAGE sql IMMUTABLE PARALLEL SAFE AS
+                    $$ SELECT zotero.try_jsonb(substring(note from '(?n)\\{.*\\}')) $$`);
+    await db.query(`CREATE VIEW public.my_podcasts AS SELECT key, "customJSON", "dateAdded" FROM zot_u_${USER}.items`);
+    const before = await all(`SELECT * FROM public.my_podcasts ORDER BY key`);
+
+    const run = await zotSync(fetchArgs(zotero, "--user", String(USER), "--key", KEY));
+    assert.equal(run.code, 0, run.out);
+    assert.deepEqual(
+      (await all(`SELECT DISTINCT l.lanname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  JOIN pg_language l ON l.oid = p.prolang WHERE n.nspname = 'zotero' AND p.proname LIKE 'try\_%'`)),
+      [{ lanname: "sql" }]
+    );
+    assert.deepEqual(await all(`SELECT * FROM public.my_podcasts ORDER BY key`), before);
+    assert.ok(before.some((r) => r.customJSON !== null) && before.every((r) => r.dateAdded !== null));
+  });
+});
+
+test("the safe casts work in parallel queries, where 0.4.0's failed", async () => {
+  assert.equal((await zotSync(["check", "--db", DB])).code, 0);
+  await db.query("DROP SCHEMA IF EXISTS old_casts CASCADE; CREATE SCHEMA old_casts");
+  await db.query(cast040("old_casts", "try_jsonb"));
+  await db.query(`CREATE TABLE old_casts.notes AS
+                  SELECT CASE WHEN g % 3 = 0 THEN '{broken' ELSE '{"n": ' || g || '}' END AS v FROM generate_series(1, 3000) g`);
+  // debug_parallel_query (PostgreSQL 16+) runs a parallel-safe query in a parallel worker.
+  const inParallel = async (sql) => {
+    await db.query("BEGIN");
+    try {
+      await db.query("SET LOCAL debug_parallel_query = on");
+      return (await db.query(sql)).rows;
+    } finally {
+      await db.query("ROLLBACK");
+    }
+  };
+  try {
+    const plan = (await inParallel(`EXPLAIN (COSTS OFF) SELECT count(zotero.custom_json(v)) FROM old_casts.notes`)).map((r) => r["QUERY PLAN"]);
+    assert.ok(plan.some((line) => line.includes("Gather")), plan.join("\n"));
+    assert.equal((await inParallel(`SELECT count(zotero.custom_json(v))::int AS n FROM old_casts.notes`))[0].n, 2000);
+    await assert.rejects(inParallel(`SELECT count(old_casts.try_jsonb(v)) FROM old_casts.notes`), /cannot start subtransactions during a parallel operation/);
+  } finally {
+    await db.query("DROP SCHEMA old_casts CASCADE");
+  }
+});
+
+test("deeply nested JSON now raises instead of quietly becoming NULL", async () => {
+  assert.equal((await zotSync(["check", "--db", DB])).code, 0);
+  await assert.rejects(db.query(`SELECT zotero.try_jsonb(repeat('[', 100000))`), /stack depth limit exceeded/);
+  assert.equal((await one(`SELECT zotero.try_jsonb(repeat('[', 100) || repeat(']', 100)) IS NOT NULL AS ok`)).ok, true);
+});
+
 test("a zot-sync 0.3 database is refused untouched", async () => {
   await db.query("CREATE SCHEMA logs; CREATE TABLE logs.zot_fetch (id serial)");
   await withZotero([userLibrary()], async (zotero) => {
